@@ -19,6 +19,8 @@ class YawOptimizer:
         self.lr0 = hyp.LR0
         self.lr_min = hyp.LR_MIN
         self.lr = self.lr0
+        self.max_cone_dist = 15.0
+        self.weight_thresh = math.exp(-self.max_cone_dist * hyp.DIST_DECAY)
 
         self.ready = False
         self.car_pos = None
@@ -33,7 +35,7 @@ class YawOptimizer:
         self.car_pos = car_pos
         self.car_yaw = car_yaw
         self.yaw = car_yaw
-        self.cones = cones
+        self.cones = [cone for cone in cones if math.sqrt((cone.x - car_pos[0])**2 + (cone.y - car_pos[1])**2) <= self.max_cone_dist]
         self.process_data()
         
     def process_data(self):
