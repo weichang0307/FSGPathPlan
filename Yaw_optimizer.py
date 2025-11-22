@@ -49,8 +49,8 @@ class YawOptimizer:
         for _ in range(self.optimize_steps):
             yaw_grad = self.cal_gradient()
             self.yaw += self.lr * yaw_grad
-            if math.cos(self.yaw - self.car_yaw) < 0.7:
-                self.yaw -= 2 * math.pi
+            if math.cos(self.yaw - self.car_yaw) < math.cos(hyp.MAX_YAW_DEVIATION):
+                self.yaw = self.car_yaw + math.copysign(hyp.MAX_YAW_DEVIATION, self.yaw - self.car_yaw)
             self.process_data()
             self.lr -= (self.lr0 - self.lr_min) / (self.optimize_steps - 1)
         self.lr = self.lr0
