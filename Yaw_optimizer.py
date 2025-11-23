@@ -12,6 +12,8 @@ This optimizer is used to optimize the yaw angle of next step based on the cones
 class YawOptimizer:
     def __init__(self):
         self.step_size = hyp.STEP_SIZE
+        self.margin = hyp.MARGIN
+        self.margin_tolerance = hyp.MARGIN_TOLERANCE
         self.likelihood_gamma = hyp.LIKELIHOOD_GAMMA
         self.prior_gamma = hyp.PRIOR_GAMMA
         self.dist_decay = hyp.DIST_DECAY
@@ -39,7 +41,7 @@ class YawOptimizer:
         self.process_data()
         
     def process_data(self):
-        car_to_cones = [(cone.x - (self.car_pos[0] + self.step_size / 2 * math.cos(self.yaw)), cone.y - (self.car_pos[1] + self.step_size / 2 * math.sin(self.yaw))) for cone in self.cones]
+        car_to_cones = [(cone.x - (self.car_pos[0] + self.step_size / 2 * math.cos(self.car_yaw)), cone.y - (self.car_pos[1] + self.step_size / 2 * math.sin(self.car_yaw))) for cone in self.cones]
         self.cones_dir = [math.atan2(dy, dx) for dx, dy in car_to_cones]
         self.cones_dist = [math.sqrt(dx**2 + dy**2) for dx, dy in car_to_cones]
         self.cal_attention()
@@ -53,7 +55,6 @@ class YawOptimizer:
             self.yaw += self.lr * yaw_grad
             if math.cos(self.yaw - self.car_yaw) < math.cos(hyp.MAX_YAW_DEVIATION):
                 self.yaw = self.car_yaw + math.copysign(hyp.MAX_YAW_DEVIATION, self.yaw - self.car_yaw)
-            self.process_data()
             self.lr -= (self.lr0 - self.lr_min) / (self.optimize_steps - 1)
         self.lr = self.lr0
         return self.yaw
@@ -61,9 +62,9 @@ class YawOptimizer:
     def cal_attention(self):
         self.cones_attention = [math.exp(-max(0, d) * self.dist_decay) for d in self.cones_dist]
 
-    def cal_prob(self):
+    def cal_prob(self, adjust=False):
         prior_prob = self.prior_prob()
-        likelihood_prob = self.likelihood_prob()
+        likelihood_prob = self.likelihood_prob(adjust=adjust)
         prob = prior_prob * likelihood_prob
         return prob
 
@@ -76,21 +77,24 @@ class YawOptimizer:
     def prior_prob(self):
         return math.exp(-self.prior_gamma * (self.yaw - self.car_yaw) ** 2)
     
-    def likelihood_prob(self):
+    def likelihood_prob(self, adjust=False):
         logit = self.likelihood_logit()
-        prob = 1 / (1 + math.exp(-self.likelihood_gamma * logit))
+        z = self.likelihood_gamma * (hyp.PROB_ADJUST_GAMMA if adjust else 1) * logit - hyp.LIKELIHOOD_Z_SHIFT
+        if z > 700:
+            return 1.0
+        elif z < -700:
+            return 0.0
+        prob = 1 / (1 + math.exp(-z))
         return prob
 
     def likelihood_logit(self):
         logit_total = 0.0
         for index, cone in enumerate(self.cones):
             angle = self.yaw - self.cones_dir[index]
-            if math.cos(angle) < 0:
-                continue
             if self.cones[index].color == obj.YELLOW:
-                logit = math.sin(angle)
+                logit = self.margin_tolerance ** 2 - (math.sin(angle) * self.cones_dist[index] - self.margin) ** 2
             elif self.cones[index].color == obj.BLUE:
-                logit = -math.sin(angle)
+                logit = self.margin_tolerance ** 2 - (-math.sin(angle) * self.cones_dist[index] - self.margin) ** 2
             else:
                 logit = 0.0
             logit_total += logit * self.cones_attention[index] * cone.confidence
@@ -100,7 +104,7 @@ class YawOptimizer:
         return -self.prior_gamma * 2 * (self.yaw - self.car_yaw)
     
     def likelihood_gradient(self):
-        return self.likelihood_logit_gradient() * self.likelihood_gamma / (1 + math.exp(self.likelihood_gamma * self.likelihood_logit()))
+        return self.likelihood_logit_gradient() * self.likelihood_gamma * (1 - self.likelihood_prob())
     
     def likelihood_logit_gradient(self):
         grad_total = 0.0
@@ -109,9 +113,9 @@ class YawOptimizer:
             if math.cos(angle) < 0:
                 continue
             if self.cones[index].color == obj.YELLOW:
-                grad = math.cos(angle)
+                grad = -2 * (math.sin(angle) * self.cones_dist[index] - self.margin) * math.cos(angle) * self.cones_dist[index]
             elif self.cones[index].color == obj.BLUE:
-                grad = -math.cos(angle)
+                grad = -2 * (-math.sin(angle) * self.cones_dist[index] - self.margin) * (-math.cos(angle)) * self.cones_dist[index]
             else:
                 grad = 0.0
             grad_total += grad * self.cones_attention[index] * cone.confidence

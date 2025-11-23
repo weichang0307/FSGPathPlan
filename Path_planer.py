@@ -23,7 +23,7 @@ class PathPlanner:
             self.optimizer.optimize_yaw()
             yaw = self.optimizer.yaw
             pos = (pos[0] + math.cos(yaw) * self.step_size, pos[1] + math.sin(yaw) * self.step_size)
-            step_prob = self.optimizer.cal_prob()
+            step_prob = self.optimizer.cal_prob(adjust=True)
             prob *= step_prob
             path.append(pos)
             probs.append(prob)
