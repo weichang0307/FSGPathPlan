@@ -90,9 +90,9 @@ class YawOptimizer:
             if math.cos(angle) < 0:
                 continue
             if self.cones[index].color == obj.YELLOW:
-                logit = (math.sin(angle) * self.cones_dist[index] - self.margin) ** 2
+                logit = (math.sin(angle) * self.cones_dist[index] - 0) ** 2
             elif self.cones[index].color == obj.BLUE:
-                logit = (-math.sin(angle) * self.cones_dist[index] - self.margin) ** 2
+                logit = (-math.sin(angle) * self.cones_dist[index] - 3.5) ** 2
             else:
                 logit = 0.0
             logit_total += logit * self.cones_attention[index]
@@ -111,9 +111,9 @@ class YawOptimizer:
             if math.cos(angle) < 0:
                 continue
             if self.cones[index].color == obj.YELLOW:
-                grad = -2 * (math.sin(angle) * self.cones_dist[index] - self.margin) * math.cos(angle) * self.cones_dist[index]
+                grad = -2 * (math.sin(angle) * self.cones_dist[index] - 0) * math.cos(angle) * self.cones_dist[index]
             elif self.cones[index].color == obj.BLUE:
-                grad = -2 * (-math.sin(angle) * self.cones_dist[index] - self.margin) * (-math.cos(angle)) * self.cones_dist[index]
+                grad = -2 * (-math.sin(angle) * self.cones_dist[index] - 3.5) * (-math.cos(angle)) * self.cones_dist[index]
             else:
                 grad = 0.0
             grad_total += grad * self.cones_attention[index]
