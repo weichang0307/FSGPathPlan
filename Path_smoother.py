@@ -15,13 +15,11 @@ class PathSmoother:
         time_stamp = time.time()
         step_size = hyp.SMOOTHING_STEP_SIZE
         for _ in range(hyp.SMOOTHING_ITERATIONS):
-            smoothed_path = []
             for i in range(len(self.path)):
                 force = self.cal_force(i)
                 new_x = self.path[i][0] + force[0] * step_size
                 new_y = self.path[i][1] + force[1] * step_size
-                smoothed_path.append((new_x, new_y))
-            self.path = smoothed_path
+                self.path[i] = (new_x, new_y)
             step_size *= hyp.SMOOTHING_STEP_DECAY
         period = time.time() - time_stamp
         return self.path, period
@@ -40,6 +38,7 @@ class PathSmoother:
             cone_force = (cone_force[0] + decay * (-dx / dist), cone_force[1] + decay * (-dy / dist))
 
         smooth_force = (0.0, 0.0)
+        
         if index > 0:
             prev_dx = self.path[index][0] - self.path[index - 1][0]
             prev_dy = self.path[index][1] - self.path[index - 1][1]
