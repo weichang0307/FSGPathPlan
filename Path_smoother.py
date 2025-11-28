@@ -49,7 +49,12 @@ class PathSmoother:
             next_dy = self.path[index][1] - self.path[index + 1][1]
             dist = math.sqrt(next_dx**2 + next_dy**2)
             smooth_force = (smooth_force[0] - next_dx, smooth_force[1] - next_dy)
+        
 
         forceX = cone_force[0] * hyp.SMOOTHING_CONE_INFLUENCE + smooth_force[0] * (1.0 - hyp.SMOOTHING_CONE_INFLUENCE)
         forceY = cone_force[1] * hyp.SMOOTHING_CONE_INFLUENCE + smooth_force[1] * (1.0 - hyp.SMOOTHING_CONE_INFLUENCE)
+        norm = math.sqrt(forceX**2 + forceY**2)
+        if norm > hyp.SMOOTHING_MAX_FORCE:
+            forceX = (forceX / norm) * hyp.SMOOTHING_MAX_FORCE
+            forceY = (forceY / norm) * hyp.SMOOTHING_MAX_FORCE
         return (forceX, forceY)
